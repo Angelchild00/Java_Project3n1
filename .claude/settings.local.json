@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(git -C /e/Git/Java_Project3n1 log --oneline --all)",
-      "Bash(git -C /e/Git/Java_Project3n1 log --oneline --all --graph)"
-    ]
-  }
-}
