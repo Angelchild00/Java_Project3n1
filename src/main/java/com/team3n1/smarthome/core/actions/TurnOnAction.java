@@ -1,9 +1,11 @@
 package com.team3n1.smarthome.core.actions;
 
+import com.team3n1.smarthome.core.model.SmartDevice;
+
 public class TurnOnAction implements Action{
     @Override
     public void execute(SmartDevice device) {
-        device.setState(isOn -> true);
+        device.setState("ON");
     }
 
     @Override
