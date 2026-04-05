@@ -52,8 +52,8 @@ public class Rule{
         this.ruleID = ruleID;
         this.actions = actions;
         this.currentState = RuleState.DRAFT; // initial state
-        // TODO: Initialize triggerEventType and targetDeviceId
-        //       Either via constructor parameters or via setter methods
+        this.triggerEventType = null; // placeholder, should be set by RuleFactory
+        this.targetDeviceId = null; // placeholder, should be set by RuleFactory
     }
 
     public void activate(){
@@ -84,62 +84,53 @@ public class Rule{
         this.actions.add(action);
     }
     
-    // TODO: Add getter methods - IMPLEMENT
-    
     // getRuleID()
     // Return: this.ruleID
     // Used by: RulesEngine to identify rules in logs, DeviceRegistry validation
     public String getRuleID() {
-        // TODO: IMPLEMENT
-        return null;
+        return this.ruleID;
     }
     
     // getTriggerEventType() or getEventType()
     // Return: this.triggerEventType
     // Used by: RulesEngine.processEvent() to match event types
     public String getTriggerEventType() {
-        // TODO: IMPLEMENT
-        return null;
+        return this.triggerEventType;
     }
     
     // getTargetDeviceId()
     // Return: this.targetDeviceId
     // Used by: RulesEngine to know which device to execute actions on
     public String getTargetDeviceId() {
-        // TODO: IMPLEMENT
-        return null;
+        return this.targetDeviceId;
     }
     
     // getActions()
     // Return: this.actions (or copy for immutability if desired)
     // Used by: RulesEngine to iterate and execute all actions
     public List<Action> getActions() {
-        // TODO: IMPLEMENT
-        return null;
+        return this.actions;
     }
     
     // getCurrentState()
     // Return: this.currentState
     // Used by: RulesEngine to check if rule is ACTIVE before evaluation
     public RuleState getCurrentState() {
-        // TODO: IMPLEMENT
-        return null;
+        return this.currentState;
     }
-    
-    // TODO: Add setter methods - IMPLEMENT (optional, depends on constructor design)
     
     // setTriggerEventType(String triggerEventType)
     // Purpose: Set the event type this rule listens for (called by RuleFactory)
     // Parameter: triggerEventType (e.g., "motion_detected")
     public void setTriggerEventType(String triggerEventType) {
-        // TODO: IMPLEMENT (if using setter approach)
+        this.triggerEventType = triggerEventType;
     }
     
     // setTargetDeviceId(String targetDeviceId)
     // Purpose: Set the device this rule controls (called by RuleFactory)
     // Parameter: targetDeviceId (e.g., "light_1")
     public void setTargetDeviceId(String targetDeviceId) {
-        // TODO: IMPLEMENT (if using setter approach)
+        this.targetDeviceId = targetDeviceId;
     }
 }
 
