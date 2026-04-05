@@ -6,6 +6,8 @@ import java.util.Set;
 import com.team3n1.smarthome.core.model.Rule;
 import com.team3n1.smarthome.core.actions.Action;
 import com.team3n1.smarthome.core.exceptions.*;
+import com.team3n1.smarthome.infrastructure.logging.AuditLogger;
+import com.team3n1.smarthome.infrastructure.logging.ConsoleAuditLogger;
 
 /**
  * RuleFactory is responsible for **validating** and **creating** rules.
@@ -29,8 +31,6 @@ import com.team3n1.smarthome.core.exceptions.*;
  * @version MVP
  */
 public class RuleFactory {
-    
-    // TODO: Add fields - IMPLEMENT
     // 1. deviceRegistry: DeviceRegistry
     //    Purpose: Validate that target devices exist (RQ_03)
     //    Used in: createRule() validation step
@@ -43,8 +43,8 @@ public class RuleFactory {
     //
     private DeviceRegistry deviceRegistry;
     private Set<String> validEventTypes;
+    private AuditLogger auditLogger;
     
-    // TODO: Constructor - IMPLEMENT
     // Parameters: DeviceRegistry deviceRegistry
     // Purpose: Accept dependency injection
     // Implementation:
@@ -54,10 +54,19 @@ public class RuleFactory {
     //     (You can expand this later or make it configurable)
     //   - Log: System.out.println("[FACTORY] RuleFactory initialized with " + validEventTypes.size() + " event types");
     public RuleFactory(DeviceRegistry deviceRegistry) {
-        // TODO: IMPLEMENT
+        this(deviceRegistry, new ConsoleAuditLogger());
+    }
+
+    public RuleFactory(DeviceRegistry deviceRegistry, AuditLogger auditLogger) {
+        this.deviceRegistry = deviceRegistry;
+        this.auditLogger = auditLogger;
+        this.validEventTypes = new HashSet<>();
+        this.validEventTypes.add("motion_detected");
+        this.validEventTypes.add("door_opened");
+        this.validEventTypes.add("light_turned_on");
+        this.auditLogger.logSystemEvent("[FACTORY] RuleFactory initialized with " + validEventTypes.size() + " event types");
     }
     
-    // TODO: createRule() - IMPLEMENT
     // Parameters:
     //   - String ruleID: unique identifier for the rule
     //   - String triggerEventType: event that activates this rule (e.g., "motion_detected")
@@ -79,11 +88,11 @@ public class RuleFactory {
     //   - Allow multiple rules for same event (e.g., motion_detected → light_1 AND light_2)
     //   - Conflicts are resolved at runtime in RulesEngine.processEvent()
     //
-    // Error Handling (Throw specific exceptions with descriptive messages):
-    //   - InvalidRuleException for missing required fields
-    //   - UnknownEventTypeException if triggerEventType not recognized
-    //   - UnknownDeviceException if targetDeviceId not registered
-    //   - Example: throw new InvalidRuleException("Rule ID cannot be null or empty");
+    // Error Handling (Throw DomainException with error codes):
+    //   - INVALID_RULE: for missing required fields
+    //   - UNKNOWN_EVENT_TYPE: if triggerEventType not recognized
+    //   - UNKNOWN_DEVICE: if targetDeviceId not registered
+    //   - Example: throw new DomainException("INVALID_RULE", "Rule ID cannot be null or empty");
     //
     // Success Flow:
     //   - Create new Rule instance: new Rule(ruleID, actions)
@@ -95,13 +104,35 @@ public class RuleFactory {
     // NOTE: Rules returned are in DRAFT state. RulesEngine or user must call rule.activate()
     //       before the rule can be triggered.
     public Rule createRule(String ruleID, String triggerEventType, String targetDeviceId, List<Action> actions) {
-        // TODO: IMPLEMENT VALIDATION
-        
-        // TODO: IMPLEMENT RULE CREATION AND RETURN
-        return null;
+        // VALIDATION
+        if (ruleID == null || ruleID.trim().isEmpty()) {
+            throw new DomainException("INVALID_RULE", "Rule ID cannot be null or empty");
+        }
+        if (triggerEventType == null || triggerEventType.trim().isEmpty()) {
+            throw new DomainException("INVALID_RULE", "Trigger event type cannot be null or empty");
+        }
+        if (!validEventTypes.contains(triggerEventType)) {
+            throw new DomainException("UNKNOWN_EVENT_TYPE", "Unknown event type: " + triggerEventType);
+        }
+        if (targetDeviceId == null || targetDeviceId.trim().isEmpty()) {
+            throw new DomainException("INVALID_RULE", "Target device ID cannot be null or empty");
+        }
+        if (!deviceRegistry.deviceExists(targetDeviceId)) {
+            throw new DomainException("UNKNOWN_DEVICE", "Unknown device: " + targetDeviceId);
+        }
+        if (actions == null || actions.isEmpty()) {
+            throw new DomainException("INVALID_RULE", "Rule must contain at least one action");
+        }
+
+        // RULE CREATION AND RETURN
+        Rule rule = new Rule(ruleID, actions);
+        rule.setTriggerEventType(triggerEventType);
+        rule.setTargetDeviceId(targetDeviceId);
+
+        auditLogger.logSystemEvent("[FACTORY] Created rule '" + ruleID + "' for event '" + triggerEventType + "' targeting device '" + targetDeviceId + "'");
+        return rule;
     }
     
-    // TODO: registerEventType() - IMPLEMENT (optional, used if event types are dynamic)
     // Parameters: String eventType (e.g., "custom_event_type")
     // Purpose: Allow system to add new event types at runtime
     // Used by: Simulator or admin interface to extend event types
@@ -109,16 +140,15 @@ public class RuleFactory {
     // Log: "[FACTORY] Registered new event type: " + eventType
     // For MVP: This is optional; hardcoded types are fine for Phase 1
     public void registerEventType(String eventType) {
-        // TODO: IMPLEMENT (optional for MVP)
+        validEventTypes.add(eventType);
+        auditLogger.logSystemEvent("[FACTORY] Registered new event type: " + eventType);
     }
     
-    // TODO: getValidEventTypes() - IMPLEMENT
     // Return: Set<String> of all recognized event types
     // Purpose: Used by simulator UI or diagnostics to show available event types
     // Implementation: return new HashSet<>(validEventTypes) to prevent external modification
     public Set<String> getValidEventTypes() {
-        // TODO: IMPLEMENT
-        return null;
+        return new HashSet<>(validEventTypes);
     }
     
 }

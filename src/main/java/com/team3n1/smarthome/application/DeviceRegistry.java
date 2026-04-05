@@ -1,6 +1,9 @@
 package com.team3n1.smarthome.application;
 
 import com.team3n1.smarthome.core.model.SmartDevice;
+import com.team3n1.smarthome.core.exceptions.DomainException;
+import com.team3n1.smarthome.infrastructure.logging.AuditLogger;
+import com.team3n1.smarthome.infrastructure.logging.ConsoleAuditLogger;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,59 +26,75 @@ import java.util.Map;
  */
 public class DeviceRegistry {
     
-    // TODO: Add field - IMPLEMENT
     // Type: Map<String, SmartDevice>
     // Purpose: Store devices with their ID as key
     // Example: devices.put("light_1", new LightDevice("light_1"))
     private Map<String, SmartDevice> devices;
+    private AuditLogger auditLogger;
     
-    // TODO: Constructor - IMPLEMENT
     // Initialize the devices Map (use HashMap)
     // Log: System.out.println("[REGISTRY] DeviceRegistry initialized");
     public DeviceRegistry() {
-        // TODO: IMPLEMENT
+        this(new ConsoleAuditLogger());
+    }
+
+    public DeviceRegistry(AuditLogger auditLogger) {
+        this.devices = new HashMap<>();
+        this.auditLogger = auditLogger;
+        this.auditLogger.logSystemEvent("[REGISTRY] DeviceRegistry initialized");
     }
     
-    // TODO: registerDevice() - IMPLEMENT
     // Parameters: SmartDevice device
     // Purpose: Add a device to the registry
     // Validation:
     //   - Device cannot be null
     //   - Device ID cannot be null or empty (get via device.getDeviceId())
     //   - Device ID should not already exist (overwriting is ok for MVP, but log a warning)
+    //  Throw DomainException if validation fails
     // Logging: "[REGISTRY] Registered device: " + device.getDeviceId() + " type: " + device.getType()
     // No return value needed
     public void registerDevice(SmartDevice device) {
-        // TODO: IMPLEMENT
+        if (device == null) {
+            throw new DomainException("INVALID_RULE", "Device cannot be null");
+        }
+        String deviceId = device.getDeviceId();
+        if (deviceId == null || deviceId.trim().isEmpty()) {
+            throw new DomainException("INVALID_RULE", "Device ID cannot be null or empty");
+        }
+        if (devices.containsKey(deviceId)) {
+            auditLogger.logSystemEvent("[REGISTRY] Warning: Device ID " + deviceId + " already exists. Overwriting.");
+        }
+        devices.put(deviceId, device);
+        auditLogger.logSystemEvent("[REGISTRY] Registered device: " + deviceId + " type: " + device.getType());
     }
     
-    // TODO: getDevice() - IMPLEMENT
     // Parameters: String deviceId
     // Return: SmartDevice or null if not found
     // Used by: RuleFactory to validate devices exist, RulesEngine to execute actions on devices
     // Purpose: Retrieve a device by ID for execution
     public SmartDevice getDevice(String deviceId) {
-        // TODO: IMPLEMENT
-        return null;
+        if (deviceId == null || deviceId.trim().isEmpty()) {
+            return null;
+        }
+        return devices.get(deviceId);
     }
     
-    // TODO: deviceExists() - IMPLEMENT
     // Parameters: String deviceId
     // Return: boolean (true if device registered, false otherwise)
     // Used by: RuleFactory validation (check device exists before accepting rule)
     // This is a convenience method that prevents null-checking elsewhere
     public boolean deviceExists(String deviceId) {
-        // TODO: IMPLEMENT
-        return false;
+        if (deviceId == null || deviceId.trim().isEmpty()) {
+            return false;
+        }
+        return devices.containsKey(deviceId);
     }
     
-    // TODO: getAllDevices() - IMPLEMENT
     // Return: Collection<SmartDevice> or Map<String, SmartDevice> with all devices
     // Used by: Simulator, testing, diagnostics
     // Note: For MVP, returning the map values is fine
     public Map<String, SmartDevice> getAllDevices() {
-        // TODO: IMPLEMENT
-        return null;
+        return devices;
     }
     
 }

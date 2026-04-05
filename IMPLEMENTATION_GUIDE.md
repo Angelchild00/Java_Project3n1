@@ -84,68 +84,68 @@ Code Impact:
 // ============================================================================
 
 Event.java
-  ☐ Constructor: validate timestamp not in future
-  ☐ getEventId(), getEventType(), getSourceDeviceId(), getTimestamp()
-  ☐ toString() for logging
+  ☑ Constructor: validate timestamp not in future
+  ☑ getEventId(), getEventType(), getSourceDeviceId(), getTimestamp()
+  ☑ toString() for logging
 
 DeviceRegistry.java
-  ☐ Constructor: initialize Map<String, SmartDevice>
-  ☐ registerDevice(SmartDevice): validate device not null, store in map
-  ☐ getDevice(String deviceId): return device or null
-  ☐ deviceExists(String deviceId): boolean check
-  ☐ getAllDevices(): return devices collection
+  ☑ Constructor: initialize Map<String, SmartDevice>
+  ☑ registerDevice(SmartDevice): validate device not null, store in map
+  ☑ getDevice(String deviceId): return device or null
+  ☑ deviceExists(String deviceId): boolean check
+  ☑ getAllDevices(): return devices collection
 
-DomainExceptions.java
-  ☐ InvalidRuleException extends RuntimeException
-  ☐ UnknownDeviceException extends RuntimeException
-  ☐ UnknownEventTypeException extends RuntimeException
-  ☐ RuleExecutionException extends RuntimeException (with cause)
+DomainException.java
+  ☑ Single `DomainException` extends RuntimeException
+  ☑ Supports error codes such as `INVALID_RULE`, `UNKNOWN_DEVICE`, `UNKNOWN_EVENT_TYPE`, `RULE_EXECUTION_FAILED`
+  ☑ Constructor with `(errorCode, message)`
+  ☑ Constructor with `(errorCode, message, cause)`
 
 Rule.java
-  ☐ Add field: private String triggerEventType
-  ☐ Add field: private String targetDeviceId
-  ☐ getRuleID(): return ruleID
-  ☐ getTriggerEventType(): return triggerEventType
-  ☐ getTargetDeviceId(): return targetDeviceId
-  ☐ getActions(): return actions
-  ☐ getCurrentState(): return currentState
-  ☐ setTriggerEventType(String): set field
-  ☐ setTargetDeviceId(String): set field
+  ☑ Add field: private String triggerEventType
+  ☑ Add field: private String targetDeviceId
+  ☑ getRuleID(): return ruleID
+  ☑ getTriggerEventType(): return triggerEventType
+  ☑ getTargetDeviceId(): return targetDeviceId
+  ☑ getActions(): return actions
+  ☑ getCurrentState(): return currentState
+  ☑ setTriggerEventType(String): set field
+  ☑ setTargetDeviceId(String): set field
 
 RuleFactory.java
-  ☐ Constructor: accept DeviceRegistry, initialize validEventTypes Set
-  ☐ Constructor: populate validEventTypes with "motion_detected", etc.
-  ☐ createRule(): validate all RQ_03 conditions, throw if any fail
-  ☐ createRule(): create Rule, set triggerEventType + targetDeviceId, return
-  ☐ registerEventType(String): add to validEventTypes
-  ☐ getValidEventTypes(): return copy of set
+  ☑ Constructor: accept DeviceRegistry, initialize validEventTypes Set
+  ☑ Constructor: populate validEventTypes with "motion_detected", etc.
+  ☑ createRule(): validate all RQ_03 conditions, throw if any fail
+  ☑ createRule(): create Rule, set triggerEventType + targetDeviceId, return
+  ☑ registerEventType(String): add to validEventTypes
+  ☑ getValidEventTypes(): return copy of set
 
 ConsoleAuditLogger.java
-  ☐ Constructor: initialize DateTimeFormatter
-  ☐ logEventReceived(Event): print "[AUDIT] ... EVENT_RECEIVED: ..."
-  ☐ logRuleMatched(Event, Rule): print "[AUDIT] ... RULE_MATCHED: ..."
-  ☐ logActionAttempted(Rule, Action, String): print "[AUDIT] ... ACTION_ATTEMPT: ..."
-  ☐ logActionSuccess(Rule, Action, String): print "[AUDIT] ... ACTION_SUCCESS: ..."
-  ☐ logActionFailure(Rule, Action, String, String): print "[AUDIT] ... ACTION_FAILURE: ..."
-  ☐ logRuleSkipped(Event, Rule, String): print "[AUDIT] ... RULE_SKIPPED: ..."
-  ☐ logSystemEvent(String): print "[AUDIT] ... SYSTEM: ..."
+  ☑ Constructor: initialize DateTimeFormatter
+  ☑ logEventReceived(Event): print "[AUDIT] ... EVENT_RECEIVED: ..."
+  ☑ logRuleMatched(Event, Rule): print "[AUDIT] ... RULE_MATCHED: ..."
+  ☑ logActionAttempted(Rule, Action, String): print "[AUDIT] ... ACTION_ATTEMPT: ..."
+  ☑ logActionSuccess(Rule, Action, String): print "[AUDIT] ... ACTION_SUCCESS: ..."
+  ☑ logActionFailure(Rule, Action, String, String): print "[AUDIT] ... ACTION_FAILURE: ..."
+  ☑ logRuleSkipped(Event, Rule, String): print "[AUDIT] ... RULE_SKIPPED: ..."
+  ☑ logSystemEvent(String): print "[AUDIT] ... SYSTEM: ..."
 
 RulesEngine.java (Most Complex)
-  ☐ Constructor: accept DeviceRegistry + AuditLogger, initialize activeRules List
-  ☐ registerRule(Rule): add to activeRules, log
-  ☐ activateRule(String): find rule by ID, call rule.activate()
-  ☐ disableRule(String): find rule by ID, call rule.disable()
-  ☐ getRuleCount(): return activeRules.size()
-  ☐ findRuleById(String): iterate rules, find and return or null
-  ☐ processEvent(Event): THE HOT PATH
-       - Log event received via auditLogger
-       - Find all rules where rule.getTriggerEventType().equals(event.getType())
+  ☑ Constructor: accept DeviceRegistry + AuditLogger, initialize activeRules List
+  ☑ registerRule(Rule): add to activeRules, log
+  ☑ activateRule(String): find rule by ID, call rule.activate()
+  ☑ disableRule(String): find rule by ID, call rule.disable()
+  ☑ getRuleCount(): return activeRules.size()
+  ☑ findRuleById(String): iterate rules, find and return or null
+  ☑ processEvent(Event): THE HOT PATH
+       - ☑ Log event received via auditLogger
+       - ☑ Find all rules where rule.getTriggerEventType().equals(event.getType())
        - For each matching rule:
-         ☐ Check if rule.getCurrentState() == RuleState.ACTIVE
-         ☐ Get target device: deviceRegistry.getDevice(rule.getTargetDeviceId())
-         ☐ For each action in rule.getActions():
-           ☐ try { action.execute(device); auditLogger.logActionSuccess(...); }
-           ☐ catch (Exception e) { auditLogger.logActionFailure(...); continue; }
+         ☑ Check if rule.getCurrentState() == RuleState.ACTIVE
+         ☑ Get target device: deviceRegistry.getDevice(rule.getTargetDeviceId())
+         ☑ For each action in rule.getActions():
+           ☑ try { action.execute(device); auditLogger.logActionSuccess(...); }
+           ☑ catch (DomainException e) { auditLogger.logActionFailure(...); continue; }
 
 // ============================================================================
 // KEY DESIGN DECISIONS FOR MVP

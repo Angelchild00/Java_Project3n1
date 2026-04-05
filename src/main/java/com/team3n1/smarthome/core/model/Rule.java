@@ -2,6 +2,7 @@ package com.team3n1.smarthome.core.model;
 
 import java.util.List;
 import com.team3n1.smarthome.core.actions.Action;
+import com.team3n1.smarthome.core.exceptions.DomainException;
 
 /**
  * Rule represents a trigger-condition-action automation.
@@ -25,21 +26,20 @@ public class Rule{
     private List<Action> actions;
     private RuleState currentState;
     
-    // TODO: Add field - IMPLEMENT
     // Type: String triggerEventType
     // Purpose: What event type activates this rule (e.g., "motion_detected")
     // Used by: RulesEngine.processEvent() to match event types against rules
     // Initialized by: RuleFactory or constructor parameter
     private String triggerEventType;
     
-    // TODO: Add field - IMPLEMENT
+    
     // Type: String targetDeviceId
     // Purpose: Which device will the actions execute on (e.g., "light_1")
     // Used by: RulesEngine when executing actions (pass to RulesEngine for lookup)
     // Initialized by: RuleFactory or constructor parameter
     private String targetDeviceId;
 
-    // TODO: Update constructor - IMPLEMENT
+    
     // Current signature: Rule(String ruleID, List<Action> actions)
     // New signature should be: Rule(String ruleID, String triggerEventType, String targetDeviceId, List<Action> actions)
     // OR: Keep current constructor for backward compatibility + add setter methods below
@@ -52,14 +52,14 @@ public class Rule{
         this.ruleID = ruleID;
         this.actions = actions;
         this.currentState = RuleState.DRAFT; // initial state
-        // TODO: Initialize triggerEventType and targetDeviceId
-        //       Either via constructor parameters or via setter methods
+        this.triggerEventType = null; // placeholder, should be set by RuleFactory
+        this.targetDeviceId = null; // placeholder, should be set by RuleFactory
     }
 
     public void activate(){
         //cannot activate without actions
         if (actions == null || actions.isEmpty()){
-            throw new IllegalStateException("Cannot activate rule without actions");
+            throw new DomainException("INVALID_RULE", "Cannot activate rule without actions");
         }
         this.currentState = RuleState.ACTIVE; //valid transition
         System.out.println("[CHECK-STATE] Rule " + ruleID + " is in " + currentState + "state.");
@@ -84,62 +84,53 @@ public class Rule{
         this.actions.add(action);
     }
     
-    // TODO: Add getter methods - IMPLEMENT
-    
     // getRuleID()
     // Return: this.ruleID
     // Used by: RulesEngine to identify rules in logs, DeviceRegistry validation
     public String getRuleID() {
-        // TODO: IMPLEMENT
-        return null;
+        return this.ruleID;
     }
     
     // getTriggerEventType() or getEventType()
     // Return: this.triggerEventType
     // Used by: RulesEngine.processEvent() to match event types
     public String getTriggerEventType() {
-        // TODO: IMPLEMENT
-        return null;
+        return this.triggerEventType;
     }
     
     // getTargetDeviceId()
     // Return: this.targetDeviceId
     // Used by: RulesEngine to know which device to execute actions on
     public String getTargetDeviceId() {
-        // TODO: IMPLEMENT
-        return null;
+        return this.targetDeviceId;
     }
     
     // getActions()
     // Return: this.actions (or copy for immutability if desired)
     // Used by: RulesEngine to iterate and execute all actions
     public List<Action> getActions() {
-        // TODO: IMPLEMENT
-        return null;
+        return this.actions;
     }
     
     // getCurrentState()
     // Return: this.currentState
     // Used by: RulesEngine to check if rule is ACTIVE before evaluation
     public RuleState getCurrentState() {
-        // TODO: IMPLEMENT
-        return null;
+        return this.currentState;
     }
-    
-    // TODO: Add setter methods - IMPLEMENT (optional, depends on constructor design)
     
     // setTriggerEventType(String triggerEventType)
     // Purpose: Set the event type this rule listens for (called by RuleFactory)
     // Parameter: triggerEventType (e.g., "motion_detected")
     public void setTriggerEventType(String triggerEventType) {
-        // TODO: IMPLEMENT (if using setter approach)
+        this.triggerEventType = triggerEventType;
     }
     
     // setTargetDeviceId(String targetDeviceId)
     // Purpose: Set the device this rule controls (called by RuleFactory)
     // Parameter: targetDeviceId (e.g., "light_1")
     public void setTargetDeviceId(String targetDeviceId) {
-        // TODO: IMPLEMENT (if using setter approach)
+        this.targetDeviceId = targetDeviceId;
     }
 }
 
