@@ -2,6 +2,8 @@ package com.team3n1.smarthome.application;
 
 import com.team3n1.smarthome.core.model.SmartDevice;
 import com.team3n1.smarthome.core.exceptions.DomainException;
+import com.team3n1.smarthome.infrastructure.logging.AuditLogger;
+import com.team3n1.smarthome.infrastructure.logging.ConsoleAuditLogger;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,12 +30,18 @@ public class DeviceRegistry {
     // Purpose: Store devices with their ID as key
     // Example: devices.put("light_1", new LightDevice("light_1"))
     private Map<String, SmartDevice> devices;
+    private AuditLogger auditLogger;
     
     // Initialize the devices Map (use HashMap)
     // Log: System.out.println("[REGISTRY] DeviceRegistry initialized");
     public DeviceRegistry() {
+        this(new ConsoleAuditLogger());
+    }
+
+    public DeviceRegistry(AuditLogger auditLogger) {
         this.devices = new HashMap<>();
-        System.out.println("[REGISTRY] DeviceRegistry initialized");
+        this.auditLogger = auditLogger;
+        this.auditLogger.logSystemEvent("[REGISTRY] DeviceRegistry initialized");
     }
     
     // Parameters: SmartDevice device
@@ -54,10 +62,10 @@ public class DeviceRegistry {
             throw new DomainException("INVALID_RULE", "Device ID cannot be null or empty");
         }
         if (devices.containsKey(deviceId)) {
-            System.out.println("[REGISTRY] Warning: Device ID " + deviceId + " already exists. Overwriting.");
+            auditLogger.logSystemEvent("[REGISTRY] Warning: Device ID " + deviceId + " already exists. Overwriting.");
         }
         devices.put(deviceId, device);
-        System.out.println("[REGISTRY] Registered device: " + deviceId + " type: " + device.getType());
+        auditLogger.logSystemEvent("[REGISTRY] Registered device: " + deviceId + " type: " + device.getType());
     }
     
     // Parameters: String deviceId

@@ -69,7 +69,7 @@ public class RulesEngine {
         this.auditLogger = auditLogger;
 
         this.activeRules = new ArrayList<>();
-        System.out.println("[ENGINE] RulesEngine initialized");
+        this.auditLogger.logSystemEvent("[ENGINE] RulesEngine initialized");
     }
     
     // Parameters: Rule rule
@@ -86,11 +86,13 @@ public class RulesEngine {
         if (rule != null) {
             if (rule.getCurrentState() == RuleState.DRAFT) {
                 rule.activate();
-                System.out.println("[ENGINE] Registered rule '" + rule.getRuleID() + "' in DRAFT state. Remember to activate it.");
+                this.activeRules.add(rule);
+                auditLogger.logSystemEvent("[ENGINE] Registered rule '" + rule.getRuleID() + "' in DRAFT state and activated");
             }
             else {
                 // error log, rules should be registered in DRAFT state
-                System.out.println("[ENGINE] Warning: Registering rule '" + rule.getRuleID() + "' which is not in DRAFT state. Current state: " + rule.getCurrentState());
+                this.activeRules.add(rule);
+                auditLogger.logSystemEvent("[ENGINE] Warning: Registering rule '" + rule.getRuleID() + "' which is not in DRAFT state. Current state: " + rule.getCurrentState());
             }
         }
         else {
@@ -155,7 +157,7 @@ public class RulesEngine {
     //
     public void processEvent(Event event) {
         // LOG EVENT ARRIVAL
-        System.out.println("[ENGINE] Processing event: " + event.getEventType());
+        auditLogger.logEventReceived(event);
         
         // INITIALIZE DEVICE CONFLICT TRACKING
         Set<String> devicesTargetedThisEvent = new HashSet<>();
@@ -175,10 +177,10 @@ public class RulesEngine {
         //   - FOR EACH ACTION: try-catch, log outcome
         for (Rule rule : matchingRules) {
             String targetDeviceId = rule.getTargetDeviceId();
+            auditLogger.logRuleMatched(event, rule);
             if (devicesTargetedThisEvent.contains(targetDeviceId)) {
                 // Log conflict and skip
                 auditLogger.logRuleSkipped(event, rule, "Device already targeted this event");
-                System.out.println("[ENGINE] Skipping rule '" + rule.getRuleID() + "' due to device conflict on '" + targetDeviceId + "'");
                 continue; // skip to next rule
             }
             
@@ -187,7 +189,6 @@ public class RulesEngine {
             if (device == null) {
                 // This should not happen if validation is correct, but log just in case
                 auditLogger.logRuleSkipped(event, rule, "Target device not found at execution time");
-                System.out.println("[ENGINE] Skipping rule '" + rule.getRuleID() + "' because target device '" + targetDeviceId + "' not found at execution time");
                 continue;
             }
             
@@ -202,7 +203,6 @@ public class RulesEngine {
                     auditLogger.logActionSuccess(rule, action, targetDeviceId);
                 } catch (DomainException e) {
                     auditLogger.logActionFailure(rule, action, targetDeviceId, e.getMessage());
-                    System.out.println("[ENGINE] Action '" + action.getDescription() + "' failed on device '" + targetDeviceId + "' with error: " + e.getMessage());
                     // Continue with next action despite failure (RQ_06)
                 }
             }
@@ -221,10 +221,10 @@ public class RulesEngine {
         Rule rule = findRuleById(ruleID);
         if (rule != null) {
             rule.disable();
-            System.out.println("[ENGINE] Disabled rule '" + ruleID + "'");
+            auditLogger.logSystemEvent("[ENGINE] Disabled rule '" + ruleID + "'");
         }
         else {
-            System.out.println("[ENGINE] Warning: Rule '" + ruleID + "' not found for disabling");
+            auditLogger.logSystemEvent("[ENGINE] Warning: Rule '" + ruleID + "' not found for disabling");
         }
 
     }
@@ -240,10 +240,10 @@ public class RulesEngine {
         Rule rule = findRuleById(ruleID);
         if (rule != null) {
             rule.activate();
-            System.out.println("[ENGINE] Activated rule '" + ruleID + "'");
+            auditLogger.logSystemEvent("[ENGINE] Activated rule '" + ruleID + "'");
         }
         else {
-            System.out.println("[ENGINE] Warning: Rule '" + ruleID + "' not found for activation");
+            auditLogger.logSystemEvent("[ENGINE] Warning: Rule '" + ruleID + "' not found for activation");
         }
     }
     

@@ -6,6 +6,8 @@ import java.util.Set;
 import com.team3n1.smarthome.core.model.Rule;
 import com.team3n1.smarthome.core.actions.Action;
 import com.team3n1.smarthome.core.exceptions.*;
+import com.team3n1.smarthome.infrastructure.logging.AuditLogger;
+import com.team3n1.smarthome.infrastructure.logging.ConsoleAuditLogger;
 
 /**
  * RuleFactory is responsible for **validating** and **creating** rules.
@@ -41,6 +43,7 @@ public class RuleFactory {
     //
     private DeviceRegistry deviceRegistry;
     private Set<String> validEventTypes;
+    private AuditLogger auditLogger;
     
     // Parameters: DeviceRegistry deviceRegistry
     // Purpose: Accept dependency injection
@@ -51,12 +54,17 @@ public class RuleFactory {
     //     (You can expand this later or make it configurable)
     //   - Log: System.out.println("[FACTORY] RuleFactory initialized with " + validEventTypes.size() + " event types");
     public RuleFactory(DeviceRegistry deviceRegistry) {
+        this(deviceRegistry, new ConsoleAuditLogger());
+    }
+
+    public RuleFactory(DeviceRegistry deviceRegistry, AuditLogger auditLogger) {
         this.deviceRegistry = deviceRegistry;
+        this.auditLogger = auditLogger;
         this.validEventTypes = new HashSet<>();
         this.validEventTypes.add("motion_detected");
         this.validEventTypes.add("door_opened");
         this.validEventTypes.add("light_turned_on");
-        System.out.println("[FACTORY] RuleFactory initialized with " + validEventTypes.size() + " event types");
+        this.auditLogger.logSystemEvent("[FACTORY] RuleFactory initialized with " + validEventTypes.size() + " event types");
     }
     
     // Parameters:
@@ -121,7 +129,7 @@ public class RuleFactory {
         rule.setTriggerEventType(triggerEventType);
         rule.setTargetDeviceId(targetDeviceId);
 
-        System.out.println("[FACTORY] Created rule '" + ruleID + "' for event '" + triggerEventType + "' targeting device '" + targetDeviceId + "'");
+        auditLogger.logSystemEvent("[FACTORY] Created rule '" + ruleID + "' for event '" + triggerEventType + "' targeting device '" + targetDeviceId + "'");
         return rule;
     }
     
@@ -133,7 +141,7 @@ public class RuleFactory {
     // For MVP: This is optional; hardcoded types are fine for Phase 1
     public void registerEventType(String eventType) {
         validEventTypes.add(eventType);
-        System.out.println("[FACTORY] Registered new event type: " + eventType);
+        auditLogger.logSystemEvent("[FACTORY] Registered new event type: " + eventType);
     }
     
     // Return: Set<String> of all recognized event types
