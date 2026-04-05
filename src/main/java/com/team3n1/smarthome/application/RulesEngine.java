@@ -2,6 +2,8 @@ package com.team3n1.smarthome.application;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import com.team3n1.smarthome.core.model.Rule;
 import com.team3n1.smarthome.core.model.Event;
 import com.team3n1.smarthome.core.model.SmartDevice;
@@ -37,8 +39,6 @@ import com.team3n1.smarthome.infrastructure.logging.AuditLogger;
  * @version MVP
  */
 public class RulesEngine {
-    
-    // TODO: Add fields - IMPLEMENT
     // 1. activeRules: List<Rule>
     //    Purpose: Store rules that are registered and ready to be evaluated
     //    Used in: processEvent() - iterate through all active rules
@@ -56,7 +56,6 @@ public class RulesEngine {
     private DeviceRegistry deviceRegistry;
     private AuditLogger auditLogger;
     
-    // TODO: Constructor - IMPLEMENT
     // Parameters:
     //   - DeviceRegistry deviceRegistry
     //   - AuditLogger auditLogger
@@ -66,25 +65,40 @@ public class RulesEngine {
     //   - Initialize activeRules as an empty ArrayList<>
     //   - Log: "[ENGINE] RulesEngine initialized"
     public RulesEngine(DeviceRegistry deviceRegistry, AuditLogger auditLogger) {
-        // TODO: IMPLEMENT
+        this.deviceRegistry = deviceRegistry;
+        this.auditLogger = auditLogger;
+
+        this.activeRules = new ArrayList<>();
+        System.out.println("[ENGINE] RulesEngine initialized");
     }
     
-    // TODO: registerRule() - IMPLEMENT
     // Parameters: Rule rule
     // Purpose: Add a rule to the active rules list
     // Validation:
     //   - Rule cannot be null
-    //   - Rule should be in DRAFT state (optional check for MVP)
+    //   - Rule should be in DRAFT state
     // Implementation:
     //   - Add rule to activeRules list
     //   - Do NOT automatically activate it; user/system must call rule.activate()
     //   - Log: "[ENGINE] Registered rule '" + rule.getRuleID() + "'"
     // Return: void
     public void registerRule(Rule rule) {
-        // TODO: IMPLEMENT
+        if (rule != null) {
+            if (rule.getCurrentState() == RuleState.DRAFT) {
+                rule.activate();
+                System.out.println("[ENGINE] Registered rule '" + rule.getRuleID() + "' in DRAFT state. Remember to activate it.");
+            }
+            else {
+                // error log, rules should be registered in DRAFT state
+                System.out.println("[ENGINE] Warning: Registering rule '" + rule.getRuleID() + "' which is not in DRAFT state. Current state: " + rule.getCurrentState());
+            }
+        }
+        else {
+            throw new IllegalArgumentException("Rule cannot be null");
+        }
     }
     
-    // TODO: processEvent() - IMPLEMENT (This is the HOT PATH per SDD performance plan)
+    // processEvent() - IMPLEMENT (This is the HOT PATH per SDD performance plan)
     // Parameters: Event event
     // Purpose: Main orchestration method. Evaluate all matching rules and execute their actions.
     // 
@@ -140,21 +154,61 @@ public class RulesEngine {
     //   - If failure: reason/exception message
     //
     public void processEvent(Event event) {
-        // TODO: LOG EVENT ARRIVAL
+        // LOG EVENT ARRIVAL
+        System.out.println("[ENGINE] Processing event: " + event.getEventType());
         
-        // TODO: INITIALIZE DEVICE CONFLICT TRACKING
-        // Set<String> devicesTargetedThisEvent = new HashSet<>();
+        // INITIALIZE DEVICE CONFLICT TRACKING
+        Set<String> devicesTargetedThisEvent = new HashSet<>();
         
-        // TODO: FIND ALL MATCHING RULES (filter by event.getType() AND rule.isActive())
+        // FIND ALL MATCHING RULES (filter by event.getType() AND rule.isActive())
+        List<Rule> matchingRules = new ArrayList<>();
+        for (Rule rule : activeRules) {
+            if (rule.getCurrentState() == RuleState.ACTIVE && rule.getTriggerEventType().equals(event.getEventType())) {
+                matchingRules.add(rule);
+            }
+        }
         
-        // TODO: FOR EACH MATCHING RULE
+        // FOR EACH MATCHING RULE
         //   - Check if rule.getTargetDeviceId() already targeted this event
         //   - If conflict: logRuleSkipped(), continue to next rule
         //   - If no conflict: execute actions, add device to targeted set
         //   - FOR EACH ACTION: try-catch, log outcome
+        for (Rule rule : matchingRules) {
+            String targetDeviceId = rule.getTargetDeviceId();
+            if (devicesTargetedThisEvent.contains(targetDeviceId)) {
+                // Log conflict and skip
+                auditLogger.logRuleSkipped(event, rule, "Device already targeted this event");
+                System.out.println("[ENGINE] Skipping rule '" + rule.getRuleID() + "' due to device conflict on '" + targetDeviceId + "'");
+                continue; // skip to next rule
+            }
+            
+            // No conflict, execute actions
+            SmartDevice device = deviceRegistry.getDevice(targetDeviceId);
+            if (device == null) {
+                // This should not happen if validation is correct, but log just in case
+                auditLogger.logRuleSkipped(event, rule, "Target device not found at execution time");
+                System.out.println("[ENGINE] Skipping rule '" + rule.getRuleID() + "' because target device '" + targetDeviceId + "' not found at execution time");
+                continue;
+            }
+            
+            // Mark this device as targeted for this event
+            devicesTargetedThisEvent.add(targetDeviceId);
+            
+            // Execute each action with error handling
+            for (Action action : rule.getActions()) {
+                try {
+                    auditLogger.logActionAttempted(rule, action, targetDeviceId);
+                    action.execute(device);
+                    auditLogger.logActionSuccess(rule, action, targetDeviceId);
+                } catch (Exception e) {
+                    auditLogger.logActionFailure(rule, action, targetDeviceId, e.getMessage());
+                    System.out.println("[ENGINE] Action '" + action.getDescription() + "' failed on device '" + targetDeviceId + "' with error: " + e.getMessage());
+                    // Continue with next action despite failure (RQ_06)
+                }
+            }
+        }
     }
     
-    // TODO: disableRule() - IMPLEMENT
     // Parameters: String ruleID
     // Purpose: Disable a rule at runtime (user or admin request)
     // Implementation:
@@ -164,10 +218,17 @@ public class RulesEngine {
     //   - Log: "[ENGINE] Disabled rule '" + ruleID + "'"
     // Return: void
     public void disableRule(String ruleID) {
-        // TODO: IMPLEMENT
+        Rule rule = findRuleById(ruleID);
+        if (rule != null) {
+            rule.disable();
+            System.out.println("[ENGINE] Disabled rule '" + ruleID + "'");
+        }
+        else {
+            System.out.println("[ENGINE] Warning: Rule '" + ruleID + "' not found for disabling");
+        }
+
     }
     
-    // TODO: activateRule() - IMPLEMENT
     // Parameters: String ruleID
     // Purpose: Activate a rule (transition from DRAFT to ACTIVE)
     // Implementation:
@@ -176,26 +237,34 @@ public class RulesEngine {
     //   - Log: "[ENGINE] Activated rule '" + ruleID + "'"
     // Return: void
     public void activateRule(String ruleID) {
-        // TODO: IMPLEMENT
+        Rule rule = findRuleById(ruleID);
+        if (rule != null) {
+            rule.activate();
+            System.out.println("[ENGINE] Activated rule '" + ruleID + "'");
+        }
+        else {
+            System.out.println("[ENGINE] Warning: Rule '" + ruleID + "' not found for activation");
+        }
     }
     
-    // TODO: getRuleCount() - IMPLEMENT
     // Return: int (number of rules currently registered)
     // Purpose: Diagnostics, testing, monitoring
     // Implementation: return activeRules.size()
     public int getRuleCount() {
-        // TODO: IMPLEMENT
-        return 0;
+        return activeRules.size();
     }
     
-    // Helper method: findRuleById() - OPTIONAL
     // Purpose: Search for a rule by ID in activeRules
     // Implementation: iterate through activeRules, compare ruleID, return or null if not found
     // Used by: disableRule(), activateRule(), and other methods that need to find a rule
     // Consider: Should this throw exception if not found, or return null? Choose based on error handling style.
     private Rule findRuleById(String ruleID) {
-        // TODO: IMPLEMENT OR USE DIRECTLY IN OTHER METHODS
-        return null;
+        for (Rule rule : activeRules) {
+            if (rule.getRuleID().equals(ruleID)) {
+                return rule;
+            }
+        }
+        return null; // not found
     }
     
 }
