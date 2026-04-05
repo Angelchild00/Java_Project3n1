@@ -2,6 +2,7 @@ package com.team3n1.smarthome.core.model;
 
 import java.util.List;
 import com.team3n1.smarthome.core.actions.Action;
+import com.team3n1.smarthome.core.exceptions.DomainException;
 
 /**
  * Rule represents a trigger-condition-action automation.
@@ -25,21 +26,20 @@ public class Rule{
     private List<Action> actions;
     private RuleState currentState;
     
-    // TODO: Add field - IMPLEMENT
     // Type: String triggerEventType
     // Purpose: What event type activates this rule (e.g., "motion_detected")
     // Used by: RulesEngine.processEvent() to match event types against rules
     // Initialized by: RuleFactory or constructor parameter
     private String triggerEventType;
     
-    // TODO: Add field - IMPLEMENT
+    
     // Type: String targetDeviceId
     // Purpose: Which device will the actions execute on (e.g., "light_1")
     // Used by: RulesEngine when executing actions (pass to RulesEngine for lookup)
     // Initialized by: RuleFactory or constructor parameter
     private String targetDeviceId;
 
-    // TODO: Update constructor - IMPLEMENT
+    
     // Current signature: Rule(String ruleID, List<Action> actions)
     // New signature should be: Rule(String ruleID, String triggerEventType, String targetDeviceId, List<Action> actions)
     // OR: Keep current constructor for backward compatibility + add setter methods below
@@ -59,7 +59,7 @@ public class Rule{
     public void activate(){
         //cannot activate without actions
         if (actions == null || actions.isEmpty()){
-            throw new IllegalStateException("Cannot activate rule without actions");
+            throw new DomainException("INVALID_RULE", "Cannot activate rule without actions");
         }
         this.currentState = RuleState.ACTIVE; //valid transition
         System.out.println("[CHECK-STATE] Rule " + ruleID + " is in " + currentState + "state.");

@@ -80,11 +80,11 @@ public class RuleFactory {
     //   - Allow multiple rules for same event (e.g., motion_detected → light_1 AND light_2)
     //   - Conflicts are resolved at runtime in RulesEngine.processEvent()
     //
-    // Error Handling (Throw specific exceptions with descriptive messages):
-    //   - InvalidRuleException for missing required fields
-    //   - UnknownEventTypeException if triggerEventType not recognized
-    //   - UnknownDeviceException if targetDeviceId not registered
-    //   - Example: throw new InvalidRuleException("Rule ID cannot be null or empty");
+    // Error Handling (Throw DomainException with error codes):
+    //   - INVALID_RULE: for missing required fields
+    //   - UNKNOWN_EVENT_TYPE: if triggerEventType not recognized
+    //   - UNKNOWN_DEVICE: if targetDeviceId not registered
+    //   - Example: throw new DomainException("INVALID_RULE", "Rule ID cannot be null or empty");
     //
     // Success Flow:
     //   - Create new Rule instance: new Rule(ruleID, actions)
@@ -97,12 +97,24 @@ public class RuleFactory {
     //       before the rule can be triggered.
     public Rule createRule(String ruleID, String triggerEventType, String targetDeviceId, List<Action> actions) {
         // VALIDATION
-        if (ruleID == null || ruleID.trim().isEmpty()) {                    throw new InvalidRuleException("Rule ID cannot be null or empty");}
-        if (triggerEventType == null || triggerEventType.trim().isEmpty()) {throw new InvalidRuleException("Trigger event type cannot be null or empty");}
-        if (!validEventTypes.contains(triggerEventType)) {                  throw new UnknownEventTypeException("Unknown event type: " + triggerEventType);}
-        if (targetDeviceId == null || targetDeviceId.trim().isEmpty()) {    throw new InvalidRuleException("Target device ID cannot be null or empty");}
-        if (!deviceRegistry.deviceExists(targetDeviceId)) {                 throw new UnknownDeviceException("Unknown device: " + targetDeviceId);}
-        if (actions == null || actions.isEmpty()) {                         throw new InvalidRuleException("Rule must contain at least one action");}
+        if (ruleID == null || ruleID.trim().isEmpty()) {
+            throw new DomainException("INVALID_RULE", "Rule ID cannot be null or empty");
+        }
+        if (triggerEventType == null || triggerEventType.trim().isEmpty()) {
+            throw new DomainException("INVALID_RULE", "Trigger event type cannot be null or empty");
+        }
+        if (!validEventTypes.contains(triggerEventType)) {
+            throw new DomainException("UNKNOWN_EVENT_TYPE", "Unknown event type: " + triggerEventType);
+        }
+        if (targetDeviceId == null || targetDeviceId.trim().isEmpty()) {
+            throw new DomainException("INVALID_RULE", "Target device ID cannot be null or empty");
+        }
+        if (!deviceRegistry.deviceExists(targetDeviceId)) {
+            throw new DomainException("UNKNOWN_DEVICE", "Unknown device: " + targetDeviceId);
+        }
+        if (actions == null || actions.isEmpty()) {
+            throw new DomainException("INVALID_RULE", "Rule must contain at least one action");
+        }
 
         // RULE CREATION AND RETURN
         Rule rule = new Rule(ruleID, actions);

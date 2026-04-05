@@ -9,7 +9,7 @@ import com.team3n1.smarthome.core.model.Event;
 import com.team3n1.smarthome.core.model.SmartDevice;
 import com.team3n1.smarthome.core.model.RuleState;
 import com.team3n1.smarthome.core.actions.Action;
-import com.team3n1.smarthome.core.exceptions.*;
+import com.team3n1.smarthome.core.exceptions.DomainException;
 import com.team3n1.smarthome.infrastructure.logging.AuditLogger;
 
 /**
@@ -94,7 +94,7 @@ public class RulesEngine {
             }
         }
         else {
-            throw new IllegalArgumentException("Rule cannot be null");
+            throw new DomainException("INVALID_RULE", "Rule cannot be null");
         }
     }
     
@@ -140,7 +140,7 @@ public class RulesEngine {
     //   try {
     //       action.execute(device);
     //       // Log success
-    //   } catch (Exception e) {
+    //   } catch (DomainException e) {
     //       // Log failure but continue with next action
     //       auditLogger.logActionFailure(...);
     //   }
@@ -200,7 +200,7 @@ public class RulesEngine {
                     auditLogger.logActionAttempted(rule, action, targetDeviceId);
                     action.execute(device);
                     auditLogger.logActionSuccess(rule, action, targetDeviceId);
-                } catch (Exception e) {
+                } catch (DomainException e) {
                     auditLogger.logActionFailure(rule, action, targetDeviceId, e.getMessage());
                     System.out.println("[ENGINE] Action '" + action.getDescription() + "' failed on device '" + targetDeviceId + "' with error: " + e.getMessage());
                     // Continue with next action despite failure (RQ_06)

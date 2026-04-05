@@ -1,6 +1,7 @@
 package com.team3n1.smarthome.application;
 
 import com.team3n1.smarthome.core.model.SmartDevice;
+import com.team3n1.smarthome.core.exceptions.DomainException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -41,15 +42,16 @@ public class DeviceRegistry {
     //   - Device cannot be null
     //   - Device ID cannot be null or empty (get via device.getDeviceId())
     //   - Device ID should not already exist (overwriting is ok for MVP, but log a warning)
+    //  Throw DomainException if validation fails
     // Logging: "[REGISTRY] Registered device: " + device.getDeviceId() + " type: " + device.getType()
     // No return value needed
     public void registerDevice(SmartDevice device) {
         if (device == null) {
-            throw new IllegalArgumentException("Device cannot be null");
+            throw new DomainException("INVALID_RULE", "Device cannot be null");
         }
         String deviceId = device.getDeviceId();
         if (deviceId == null || deviceId.trim().isEmpty()) {
-            throw new IllegalArgumentException("Device ID cannot be null or empty");
+            throw new DomainException("INVALID_RULE", "Device ID cannot be null or empty");
         }
         if (devices.containsKey(deviceId)) {
             System.out.println("[REGISTRY] Warning: Device ID " + deviceId + " already exists. Overwriting.");
