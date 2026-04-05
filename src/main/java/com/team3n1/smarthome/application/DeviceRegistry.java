@@ -23,20 +23,18 @@ import java.util.Map;
  */
 public class DeviceRegistry {
     
-    // TODO: Add field - IMPLEMENT
     // Type: Map<String, SmartDevice>
     // Purpose: Store devices with their ID as key
     // Example: devices.put("light_1", new LightDevice("light_1"))
     private Map<String, SmartDevice> devices;
     
-    // TODO: Constructor - IMPLEMENT
     // Initialize the devices Map (use HashMap)
     // Log: System.out.println("[REGISTRY] DeviceRegistry initialized");
     public DeviceRegistry() {
-        // TODO: IMPLEMENT
+        this.devices = new HashMap<>();
+        System.out.println("[REGISTRY] DeviceRegistry initialized");
     }
     
-    // TODO: registerDevice() - IMPLEMENT
     // Parameters: SmartDevice device
     // Purpose: Add a device to the registry
     // Validation:
@@ -46,36 +44,47 @@ public class DeviceRegistry {
     // Logging: "[REGISTRY] Registered device: " + device.getDeviceId() + " type: " + device.getType()
     // No return value needed
     public void registerDevice(SmartDevice device) {
-        // TODO: IMPLEMENT
+        if (device == null) {
+            throw new IllegalArgumentException("Device cannot be null");
+        }
+        String deviceId = device.getDeviceId();
+        if (deviceId == null || deviceId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Device ID cannot be null or empty");
+        }
+        if (devices.containsKey(deviceId)) {
+            System.out.println("[REGISTRY] Warning: Device ID " + deviceId + " already exists. Overwriting.");
+        }
+        devices.put(deviceId, device);
+        System.out.println("[REGISTRY] Registered device: " + deviceId + " type: " + device.getType());
     }
     
-    // TODO: getDevice() - IMPLEMENT
     // Parameters: String deviceId
     // Return: SmartDevice or null if not found
     // Used by: RuleFactory to validate devices exist, RulesEngine to execute actions on devices
     // Purpose: Retrieve a device by ID for execution
     public SmartDevice getDevice(String deviceId) {
-        // TODO: IMPLEMENT
-        return null;
+        if (deviceId == null || deviceId.trim().isEmpty()) {
+            return null;
+        }
+        return devices.get(deviceId);
     }
     
-    // TODO: deviceExists() - IMPLEMENT
     // Parameters: String deviceId
     // Return: boolean (true if device registered, false otherwise)
     // Used by: RuleFactory validation (check device exists before accepting rule)
     // This is a convenience method that prevents null-checking elsewhere
     public boolean deviceExists(String deviceId) {
-        // TODO: IMPLEMENT
-        return false;
+        if (deviceId == null || deviceId.trim().isEmpty()) {
+            return false;
+        }
+        return devices.containsKey(deviceId);
     }
     
-    // TODO: getAllDevices() - IMPLEMENT
     // Return: Collection<SmartDevice> or Map<String, SmartDevice> with all devices
     // Used by: Simulator, testing, diagnostics
     // Note: For MVP, returning the map values is fine
     public Map<String, SmartDevice> getAllDevices() {
-        // TODO: IMPLEMENT
-        return null;
+        return devices;
     }
     
 }
