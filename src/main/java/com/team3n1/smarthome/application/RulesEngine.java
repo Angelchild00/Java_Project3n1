@@ -10,12 +10,18 @@ import com.team3n1.smarthome.core.model.SmartDevice;
 import com.team3n1.smarthome.core.model.RuleState;
 import com.team3n1.smarthome.core.actions.Action;
 import com.team3n1.smarthome.core.exceptions.DomainException;
+import com.team3n1.smarthome.core.model.DeviceEventListener;
 import com.team3n1.smarthome.infrastructure.logging.AuditLogger;
 
 /**
  * RulesEngine is the orchestration/coordination layer for the smart home system.
  * It is the "brain" that receives events, matches them to rules, and executes actions.
- * 
+ *
+ * Observer pattern role: Observer (Concrete Observer)
+ *   RulesEngine implements DeviceEventListener so it can be registered directly
+ *   on a MotionSensor. When the sensor detects motion it calls onEvent(), which
+ *   delegates to processEvent() — no manual Event construction is needed in Main.
+ *
  * Responsibilities:
  * - Register and store rules
  * - Accept incoming events via processEvent()
@@ -23,22 +29,22 @@ import com.team3n1.smarthome.infrastructure.logging.AuditLogger;
  * - Execute rule actions with error handling
  * - Log all activity to AuditLogger
  * - Enable/disable rules at runtime
- * 
+ *
  * Requirements Supported:
  * - RQ_04: Evaluate all enabled rules in deterministic order
  * - RQ_05: Execute rule actions in the order defined
  * - RQ_06: Isolate action failures (one failing action doesn't stop others or other rules)
  * - RQ_10: Write audit entry for every processed event
- * 
+ *
  * Design Notes:
  * - MVP: Evaluate rules in registration order (simple deterministic order)
- * - MVP: No throttling yet (Phase 2)
- * - MVP: Event matching is simple: rule.triggerEventType.equals(event.getType())
- * 
+ * - MVP: No throttling (reduced scope per professor)
+ * - MVP: Event matching is simple string equality on event type
+ *
  * @author Team 3n1
  * @version MVP
  */
-public class RulesEngine {
+public class RulesEngine implements DeviceEventListener {
     // 1. activeRules: List<Rule>
     //    Purpose: Store rules that are registered and ready to be evaluated
     //    Used in: processEvent() - iterate through all active rules
@@ -55,6 +61,7 @@ public class RulesEngine {
     private List<Rule> activeRules;
     private DeviceRegistry deviceRegistry;
     private AuditLogger auditLogger;
+    private ExecutionPolicy policy;
     
     // Parameters:
     //   - DeviceRegistry deviceRegistry
@@ -67,9 +74,26 @@ public class RulesEngine {
     public RulesEngine(DeviceRegistry deviceRegistry, AuditLogger auditLogger) {
         this.deviceRegistry = deviceRegistry;
         this.auditLogger = auditLogger;
-
         this.activeRules = new ArrayList<>();
-        this.auditLogger.logSystemEvent("[ENGINE] RulesEngine initialized");
+        this.policy = ExecutionPolicy.LENIENT;
+        this.auditLogger.logSystemEvent("[ENGINE] RulesEngine initialized with policy: " + this.policy);
+    }
+
+    /**
+     * Switch the execution policy at runtime (REQ-2.6).
+     * Call this before processEvent() to demo LENIENT vs STRICT behaviour.
+     *
+     * @param policy the new policy (must not be null)
+     */
+    public void setPolicy(ExecutionPolicy policy) {
+        if (policy == null) throw new IllegalArgumentException("Policy must not be null");
+        this.policy = policy;
+        auditLogger.logSystemEvent("[ENGINE] Execution policy changed to: " + policy);
+    }
+
+    /** @return the currently active execution policy */
+    public ExecutionPolicy getPolicy() {
+        return policy;
     }
     
     // Parameters: Rule rule
@@ -195,7 +219,7 @@ public class RulesEngine {
             // Mark this device as targeted for this event
             devicesTargetedThisEvent.add(targetDeviceId);
             
-            // Execute each action with error handling
+            // Execute each action with error handling, respecting the active policy
             for (Action action : rule.getActions()) {
                 try {
                     auditLogger.logActionAttempted(rule, action, targetDeviceId);
@@ -203,7 +227,11 @@ public class RulesEngine {
                     auditLogger.logActionSuccess(rule, action, targetDeviceId);
                 } catch (DomainException e) {
                     auditLogger.logActionFailure(rule, action, targetDeviceId, e.getMessage());
-                    // Continue with next action despite failure (RQ_06)
+                    if (policy == ExecutionPolicy.STRICT) {
+                        auditLogger.logSystemEvent("[ENGINE] STRICT policy: aborting remaining actions for rule '" + rule.getRuleID() + "'");
+                        break; // stop processing further actions in this rule
+                    }
+                    // LENIENT policy: continue with next action despite failure (RQ_06)
                 }
             }
         }
@@ -252,6 +280,17 @@ public class RulesEngine {
     // Implementation: return activeRules.size()
     public int getRuleCount() {
         return activeRules.size();
+    }
+
+    /**
+     * Observer pattern: called by a MotionSensor (Subject) when it detects an event.
+     * Delegates directly to processEvent() so the sensor never needs to know about rules.
+     *
+     * @param event the event fired by the sensor
+     */
+    @Override
+    public void onEvent(Event event) {
+        processEvent(event);
     }
     
     // Purpose: Search for a rule by ID in activeRules
