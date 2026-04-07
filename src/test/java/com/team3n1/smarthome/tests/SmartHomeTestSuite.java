@@ -36,22 +36,31 @@ public final class SmartHomeTestSuite {
 
         run("device registry register and lookup", SmartHomeTestSuite::deviceRegistryRegisterAndLookup);
         run("device registry rejects null device", SmartHomeTestSuite::deviceRegistryRejectsNullDevice);
+        run("device registry overwrites duplicate id", SmartHomeTestSuite::deviceRegistryOverwritesDuplicateId);
 
         run("rule factory creates valid rule", SmartHomeTestSuite::ruleFactoryCreatesValidRule);
         run("rule factory rejects unknown device", SmartHomeTestSuite::ruleFactoryRejectsUnknownDevice);
         run("rule factory rejects unknown event type", SmartHomeTestSuite::ruleFactoryRejectsUnknownEventType);
         run("rule factory rejects empty actions", SmartHomeTestSuite::ruleFactoryRejectsEmptyActions);
+        run("rule factory accepts registered custom event type", SmartHomeTestSuite::ruleFactoryAcceptsRegisteredCustomEventType);
 
         run("rule lifecycle activate disable", SmartHomeTestSuite::ruleLifecycleActivateDisable);
+        run("rule activation without actions throws", SmartHomeTestSuite::ruleActivationWithoutActionsThrows);
 
         run("rules engine executes matching rule", SmartHomeTestSuite::rulesEngineExecutesMatchingRule);
         run("rules engine skips overlapping targets", SmartHomeTestSuite::rulesEngineSkipsOverlappingTargets);
         run("rules engine strict aborts after first domain failure", SmartHomeTestSuite::rulesEngineStrictAbortsAfterFailure);
         run("rules engine lenient continues after domain failure", SmartHomeTestSuite::rulesEngineLenientContinuesAfterFailure);
+        run("rules engine ignores non matching event", SmartHomeTestSuite::rulesEngineIgnoresNonMatchingEvent);
+        run("rules engine disabled rule does not execute", SmartHomeTestSuite::rulesEngineDisabledRuleDoesNotExecute);
+        run("rules engine register null rule throws", SmartHomeTestSuite::rulesEngineRegisterNullRuleThrows);
 
         run("motion sensor observer notifies engine", SmartHomeTestSuite::motionSensorObserverNotifiesEngine);
+        run("motion sensor remove listener stops notifications", SmartHomeTestSuite::motionSensorRemoveListenerStopsNotifications);
 
         run("repository queries by state and event", SmartHomeTestSuite::repositoryQueriesByStateAndEvent);
+        run("repository list methods are unmodifiable", SmartHomeTestSuite::repositoryListsAreUnmodifiable);
+        run("repository delete and clear operations", SmartHomeTestSuite::repositoryDeleteAndClearOperations);
         run("turn on and turn off actions update state", SmartHomeTestSuite::turnActionsUpdateState);
 
         System.out.println();
@@ -118,6 +127,21 @@ public final class SmartHomeTestSuite {
         expectThrows(DomainException.class, () -> registry.registerDevice(null));
     }
 
+    private static void deviceRegistryOverwritesDuplicateId() {
+        DeviceRegistry registry = new DeviceRegistry(new SilentAuditLogger());
+
+        TestDevice first = new TestDevice("dup_light", "LIGHT");
+        first.setState("OFF");
+        TestDevice second = new TestDevice("dup_light", "LIGHT");
+        second.setState("ON");
+
+        registry.registerDevice(first);
+        registry.registerDevice(second);
+
+        assertEquals("ON", registry.getDevice("dup_light").getState(),
+                "latest device should overwrite previous one for same ID");
+    }
+
     private static void ruleFactoryCreatesValidRule() {
         DeviceRegistry registry = new DeviceRegistry(new SilentAuditLogger());
         registry.registerDevice(new TestDevice("light_1", "LIGHT"));
@@ -157,6 +181,17 @@ public final class SmartHomeTestSuite {
                 () -> factory.createRule("rule_1", "motion_detected", "light_1", new ArrayList<>()));
     }
 
+    private static void ruleFactoryAcceptsRegisteredCustomEventType() {
+        DeviceRegistry registry = new DeviceRegistry(new SilentAuditLogger());
+        registry.registerDevice(new TestDevice("light_1", "LIGHT"));
+        RuleFactory factory = new RuleFactory(registry, new SilentAuditLogger());
+
+        factory.registerEventType("custom_event");
+        Rule rule = factory.createRule("rule_custom", "custom_event", "light_1", Arrays.asList(new TurnOnAction()));
+
+        assertEquals("custom_event", rule.getTriggerEventType(), "custom event should be accepted after registration");
+    }
+
     private static void ruleLifecycleActivateDisable() {
         Rule rule = new Rule("rule_1", Arrays.asList(new TurnOnAction()));
         assertEquals(RuleState.DRAFT, rule.getCurrentState(), "initial state should be DRAFT");
@@ -166,6 +201,11 @@ public final class SmartHomeTestSuite {
 
         rule.disable();
         assertEquals(RuleState.DISABLED, rule.getCurrentState(), "state should be DISABLED after disable");
+    }
+
+    private static void ruleActivationWithoutActionsThrows() {
+        Rule rule = new Rule("rule_no_actions", new ArrayList<>());
+        expectThrows(DomainException.class, rule::activate);
     }
 
     private static void rulesEngineExecutesMatchingRule() {
@@ -241,6 +281,47 @@ public final class SmartHomeTestSuite {
                 "LENIENT should continue to TurnOnAction after failure");
     }
 
+    private static void rulesEngineIgnoresNonMatchingEvent() {
+        DeviceRegistry registry = new DeviceRegistry(new SilentAuditLogger());
+        registry.registerDevice(new TestDevice("light_1", "LIGHT"));
+
+        RuleFactory factory = new RuleFactory(registry, new SilentAuditLogger());
+        Rule rule = factory.createRule("rule_motion", "motion_detected", "light_1", Arrays.asList(new TurnOnAction()));
+
+        RulesEngine engine = new RulesEngine(registry, new SilentAuditLogger());
+        engine.registerRule(rule);
+
+        Event event = new Event("evt_1", "door_opened", "sensor_1", System.currentTimeMillis());
+        engine.processEvent(event);
+
+        assertEquals("OFF", registry.getDevice("light_1").getState(),
+                "non-matching event should not execute motion rule actions");
+    }
+
+    private static void rulesEngineDisabledRuleDoesNotExecute() {
+        DeviceRegistry registry = new DeviceRegistry(new SilentAuditLogger());
+        registry.registerDevice(new TestDevice("light_1", "LIGHT"));
+
+        RuleFactory factory = new RuleFactory(registry, new SilentAuditLogger());
+        Rule rule = factory.createRule("rule_disabled", "motion_detected", "light_1", Arrays.asList(new TurnOnAction()));
+
+        RulesEngine engine = new RulesEngine(registry, new SilentAuditLogger());
+        engine.registerRule(rule);
+        engine.disableRule("rule_disabled");
+
+        Event event = new Event("evt_1", "motion_detected", "sensor_1", System.currentTimeMillis());
+        engine.processEvent(event);
+
+        assertEquals("OFF", registry.getDevice("light_1").getState(),
+                "disabled rule should not execute actions");
+    }
+
+    private static void rulesEngineRegisterNullRuleThrows() {
+        DeviceRegistry registry = new DeviceRegistry(new SilentAuditLogger());
+        RulesEngine engine = new RulesEngine(registry, new SilentAuditLogger());
+        expectThrows(DomainException.class, () -> engine.registerRule(null));
+    }
+
     private static void motionSensorObserverNotifiesEngine() {
         DeviceRegistry registry = new DeviceRegistry(new SilentAuditLogger());
         TestDevice light = new TestDevice("light_1", "LIGHT");
@@ -259,6 +340,27 @@ public final class SmartHomeTestSuite {
         sensor.setState("MOTION_DETECTED");
 
         assertEquals("ON", light.getState(), "observer path should turn light on");
+    }
+
+    private static void motionSensorRemoveListenerStopsNotifications() {
+        DeviceRegistry registry = new DeviceRegistry(new SilentAuditLogger());
+        TestDevice light = new TestDevice("light_1", "LIGHT");
+        registry.registerDevice(light);
+
+        MotionSensor sensor = new MotionSensor("sensor_1");
+        registry.registerDevice(sensor);
+
+        RuleFactory factory = new RuleFactory(registry, new SilentAuditLogger());
+        Rule rule = factory.createRule("rule_1", "motion_detected", "light_1", Arrays.asList(new TurnOnAction()));
+
+        RulesEngine engine = new RulesEngine(registry, new SilentAuditLogger());
+        engine.registerRule(rule);
+        sensor.addListener(engine);
+        sensor.removeListener(engine);
+
+        sensor.setState("MOTION_DETECTED");
+
+        assertEquals("OFF", light.getState(), "light should remain OFF after listener removal");
     }
 
     private static void repositoryQueriesByStateAndEvent() {
@@ -286,6 +388,45 @@ public final class SmartHomeTestSuite {
 
         assertEquals(1, motion.size(), "expected one motion_detected rule");
         assertEquals("r_active", motion.get(0).getRuleID(), "wrong motion rule");
+    }
+
+    private static void repositoryListsAreUnmodifiable() {
+        InMemoryRepository repo = new InMemoryRepository();
+
+        Rule rule = new Rule("r1", Arrays.asList(new TurnOnAction()));
+        rule.setTriggerEventType("motion_detected");
+        rule.setTargetDeviceId("light_1");
+        repo.saveRule(rule);
+
+        TestDevice device = new TestDevice("light_1", "LIGHT");
+        repo.saveDevice(device);
+
+        expectThrows(UnsupportedOperationException.class, () -> repo.findAllRules().add(rule));
+        expectThrows(UnsupportedOperationException.class, () -> repo.findAllDevices().add(device));
+    }
+
+    private static void repositoryDeleteAndClearOperations() {
+        InMemoryRepository repo = new InMemoryRepository();
+
+        Rule rule = new Rule("r1", Arrays.asList(new TurnOnAction()));
+        rule.setTriggerEventType("motion_detected");
+        rule.setTargetDeviceId("light_1");
+        repo.saveRule(rule);
+
+        TestDevice device = new TestDevice("light_1", "LIGHT");
+        repo.saveDevice(device);
+
+        assertTrue(repo.deleteRule("r1"), "existing rule should be deleted");
+        assertTrue(repo.deleteDevice("light_1"), "existing device should be deleted");
+        assertEquals(0, repo.getRuleCount(), "rule count should be 0 after delete");
+        assertEquals(0, repo.getDeviceCount(), "device count should be 0 after delete");
+
+        repo.saveRule(rule);
+        repo.saveDevice(device);
+        repo.clear();
+
+        assertEquals(0, repo.getRuleCount(), "rule count should be 0 after clear");
+        assertEquals(0, repo.getDeviceCount(), "device count should be 0 after clear");
     }
 
     private static void turnActionsUpdateState() {
