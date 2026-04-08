@@ -35,7 +35,7 @@ public class MotionSensor implements SmartDevice {
     }
 
     // -------------------------------------------------------------------------
-    // Observer pattern: subject-side methods
+    // Observer pattern methods
     // -------------------------------------------------------------------------
 
     /**

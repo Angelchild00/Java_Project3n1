@@ -82,7 +82,6 @@ public class DeviceRegistry {
     // Parameters: String deviceId
     // Return: boolean (true if device registered, false otherwise)
     // Used by: RuleFactory validation (check device exists before accepting rule)
-    // This is a convenience method that prevents null-checking elsewhere
     public boolean deviceExists(String deviceId) {
         if (deviceId == null || deviceId.trim().isEmpty()) {
             return false;

@@ -25,7 +25,7 @@ import java.time.format.DateTimeFormatter;
  */
 public class ConsoleAuditLogger implements AuditLogger {
     
-    // TODO: Add field - IMPLEMENT
+
     // DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
     // Purpose: Format timestamps for log messages
     // Used in: All log methods to add consistent timestamps
